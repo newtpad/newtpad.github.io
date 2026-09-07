@@ -49,14 +49,14 @@
       padding: 6px 12px;
       border-radius: 20px;
       color: var(--accent);
-      cursor: pointer;
+      text-decoration: none;
       user-select: none;
       transition: all 0.2s;
     }
     .status-badge.connected {
       color: var(--success);
       border-color: var(--success);
-      cursor: default;
+      pointer-events: none;
     }
     .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
 
@@ -95,7 +95,6 @@
       display: flex;
       flex-direction: column;
       overflow: hidden;
-      transition: opacity 0.2s;
     }
     .panel-header {
       padding: 0.8rem 1rem;
@@ -125,7 +124,7 @@
       font-family: inherit;
     }
 
-    /* Links */
+    /* Adaptive Links */
     .link-list { list-style: none; overflow-y: auto; flex: 1; }
     .link-item {
       display: flex;
@@ -200,10 +199,11 @@
   <header>
     <div id="clock" style="font-weight: 500; font-size: 1.1rem;">--:--</div>
     
-    <div id="companion-badge" class="status-badge" onclick="installCompanion()">
+    <!-- Real <a> element intercepted by Violentmonkey's URL matcher -->
+    <a id="companion-badge" class="status-badge" href="#" target="_blank">
       <span class="dot"></span>
       <span id="badge-label">Install Companion (Violentmonkey)</span>
-    </div>
+    </a>
   </header>
 
   <div class="search-wrapper">
@@ -250,7 +250,7 @@
 
   <script>
     /* =====================================================================
-       1. INLINE USERSCRIPT SOURCE (Executed by Violentmonkey)
+       1. INLINE USERSCRIPT & DIRECT INSTALL HOOK
        ===================================================================== */
     const COMPANION_SOURCE = `// ==UserScript==
 // @name         Newtpad Companion
@@ -262,7 +262,6 @@
 // @match        file:///*
 // @grant        GM_getValue
 // @grant        GM_setValue
-// @grant        GM_xmlhttpRequest
 // @run-at       document-start
 // ==/UserScript==
 
@@ -284,24 +283,14 @@
   document.addEventListener('DOMContentLoaded', announce);
 })();`;
 
-    // Dynamic Installer (Compiles script to Blob & triggers Violentmonkey)
-    function installCompanion() {
-      if (state.hasCompanion) return;
-      const blob = new Blob([COMPANION_SOURCE], { type: 'application/javascript;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      
-      // Creating an anchor pointing to *.user.js invokes Violentmonkey's install UI
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'newtpad.user.js';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 10000);
-    }
+    // Bind real Data-URI matching Violentmonkey's regex: /\.user\.js([?#].*)?$/
+    const badge = document.getElementById('companion-badge');
+    badge.href = 'data:text/javascript;charset=utf-8,' + 
+                 encodeURIComponent(COMPANION_SOURCE) + 
+                 '#newtpad.user.js';
 
     /* =====================================================================
-       2. NEWTPAD CORE LOGIC
+       2. NEWTPAD DASHBOARD CORE LOGIC
        ===================================================================== */
     const state = {
       notes: '',
@@ -346,7 +335,6 @@
       state.links.forEach((item, index) => {
         const li = document.createElement('li');
         const daysUnused = (now - item.lastUsed) / 86400000;
-        // Automatic decay prompt for links cold for > 7 days
         const isStale = daysUnused > 7 && item.clicks < 2;
 
         li.innerHTML = `
@@ -398,7 +386,7 @@
       saveData();
     });
 
-    // News & Adaptive Feed toggle
+    // News & Toggle
     function toggleNewsPanel() {
       state.hideNews = !state.hideNews;
       document.getElementById('news-panel').style.display = state.hideNews ? 'none' : 'flex';
@@ -423,14 +411,14 @@
         });
     }
 
-    // Companion Connection
+    // Handshake with Violentmonkey
     window.addEventListener('message', (e) => {
       if (e.source !== window || !e.data) return;
 
       if (e.data.type === 'NEWTPAD_VM_READY') {
         state.hasCompanion = true;
-        const badge = document.getElementById('companion-badge');
         badge.className = 'status-badge connected';
+        badge.removeAttribute('href');
         document.getElementById('badge-label').textContent = 'Companion Active';
         window.postMessage({ type: 'NEWTPAD_LOAD_DATA' }, '*');
       }
@@ -449,7 +437,7 @@
       renderLinks();
     }
 
-    // Fallback Initializer
+    // Native LocalStorage Fallback Init
     const local = localStorage.getItem('newtpad_data');
     if (local) {
       try {
