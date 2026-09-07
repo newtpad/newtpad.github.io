@@ -49,6 +49,7 @@
       padding: 6px 12px;
       border-radius: 20px;
       color: var(--accent);
+      cursor: pointer;
       text-decoration: none;
       user-select: none;
       transition: all 0.2s;
@@ -56,15 +57,12 @@
     .status-badge.connected {
       color: var(--success);
       border-color: var(--success);
+      cursor: default;
       pointer-events: none;
     }
     .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
 
-    .search-wrapper {
-      max-width: 600px;
-      margin: 0 auto;
-      width: 100%;
-    }
+    .search-wrapper { max-width: 600px; margin: 0 auto; width: 100%; }
     .search-input {
       width: 100%;
       background: var(--card);
@@ -109,7 +107,6 @@
       align-items: center;
     }
 
-    /* Notes */
     #scratchpad {
       flex: 1;
       width: 100%;
@@ -124,7 +121,6 @@
       font-family: inherit;
     }
 
-    /* Adaptive Links */
     .link-list { list-style: none; overflow-y: auto; flex: 1; }
     .link-item {
       display: flex;
@@ -134,16 +130,9 @@
       border-bottom: 1px solid #21262d;
       text-decoration: none;
       color: var(--text);
-      transition: background 0.15s;
     }
     .link-item:hover { background: var(--card-hover); }
-    .link-stats {
-      font-size: 0.75rem;
-      color: var(--text-muted);
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
+    .link-stats { font-size: 0.75rem; color: var(--text-muted); display: flex; align-items: center; gap: 6px; }
     .prune-btn {
       font-size: 0.7rem;
       background: rgba(248, 81, 73, 0.15);
@@ -171,27 +160,60 @@
       cursor: pointer;
     }
 
-    /* News */
     .news-list { list-style: none; overflow-y: auto; max-height: 380px; }
     .news-item { padding: 0.75rem 1rem; border-bottom: 1px solid #21262d; }
-    .news-item a {
-      text-decoration: none;
-      color: var(--text);
-      font-size: 0.85rem;
-      line-height: 1.35;
-      display: block;
-    }
+    .news-item a { text-decoration: none; color: var(--text); font-size: 0.85rem; display: block; }
     .news-item a:hover { color: var(--accent); }
     .news-meta { font-size: 0.7rem; color: var(--text-muted); margin-top: 4px; }
-    
-    .btn-text {
-      background: none;
-      border: none;
-      color: var(--text-muted);
-      cursor: pointer;
-      font-size: 0.75rem;
+
+    /* Modal Styling */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.75);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      backdrop-filter: blur(3px);
     }
-    .btn-text:hover { color: var(--text); }
+    .modal-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      width: min(90%, 540px);
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    .modal-title { font-size: 1.1rem; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+    .modal-step {
+      background: #0d1117;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.8rem;
+      font-size: 0.85rem;
+      line-height: 1.4;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .btn {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      text-decoration: none;
+    }
+    .btn-secondary { background: #21262d; color: var(--text); }
   </style>
 </head>
 <body>
@@ -199,11 +221,10 @@
   <header>
     <div id="clock" style="font-weight: 500; font-size: 1.1rem;">--:--</div>
     
-    <!-- Real <a> element intercepted by Violentmonkey's URL matcher -->
-    <a id="companion-badge" class="status-badge" href="#" target="_blank">
+    <div id="companion-badge" class="status-badge" onclick="handleInstallClick(event)">
       <span class="dot"></span>
       <span id="badge-label">Install Companion (Violentmonkey)</span>
-    </a>
+    </div>
   </header>
 
   <div class="search-wrapper">
@@ -213,7 +234,6 @@
   </div>
 
   <main class="dashboard">
-    <!-- 1. Notes/Scratchpad -->
     <section class="panel">
       <div class="panel-header">
         <span>Scratchpad</span>
@@ -222,7 +242,6 @@
       <textarea id="scratchpad" placeholder="Quick notes, commands, to-dos..."></textarea>
     </section>
 
-    <!-- 2. Adaptive Smart Links -->
     <section class="panel">
       <div class="panel-header">
         <span>Frequent Links</span>
@@ -236,11 +255,10 @@
       </form>
     </section>
 
-    <!-- 3. News / Pulse -->
     <section class="panel" id="news-panel">
       <div class="panel-header">
         <span>Pulse</span>
-        <button class="btn-text" onclick="toggleNewsPanel()">Hide Feed</button>
+        <span style="font-size: 0.75rem;">Hacker News</span>
       </div>
       <ul class="news-list" id="news-container">
         <li class="news-item" style="color: var(--text-muted); font-size: 0.85rem;">Loading feed...</li>
@@ -248,11 +266,37 @@
     </section>
   </main>
 
+  <!-- Local Script Help Modal -->
+  <div class="modal-overlay" id="help-modal">
+    <div class="modal-card">
+      <div class="modal-title">
+        <span>Setup Violentmonkey Companion</span>
+        <span style="cursor:pointer; color:var(--text-muted);" onclick="closeModal()">✕</span>
+      </div>
+      <p style="font-size: 0.85rem; color: var(--text-muted);">
+        Browsers block extensions from directly opening scripts from local <code>file:///</code> paths. Choose one of the quick options below:
+      </p>
+
+      <div class="modal-step">
+        <strong>Option A: 1-Click Clipboard (Fastest)</strong>
+        <span>Copy the script code to clipboard, open Violentmonkey from your extensions toolbar, click <strong>+ (New)</strong>, and paste.</span>
+        <button class="btn" id="copy-btn" onclick="copyScript()">📋 Copy Script to Clipboard</button>
+      </div>
+
+      <div class="modal-step">
+        <strong>Option B: Drag & Drop</strong>
+        <span>Download the file and drag it directly into the open Violentmonkey popup window.</span>
+        <a class="btn btn-secondary" href="newtpad.user.js" download="newtpad.user.js">⬇ Download newtpad.user.js</a>
+      </div>
+
+      <div class="modal-step" style="border:none; background:transparent; padding:0; font-size:0.75rem; color:var(--text-muted);">
+        💡 <em>Once hosted live on <code>https://newtpad.github.io</code>, 1-click install works natively without these steps.</em>
+      </div>
+    </div>
+  </div>
+
   <script>
-    /* =====================================================================
-       1. INLINE USERSCRIPT & DIRECT INSTALL HOOK
-       ===================================================================== */
-    const COMPANION_SOURCE = `// ==UserScript==
+    const COMPANION_CODE = `// ==UserScript==
 // @name         Newtpad Companion
 // @namespace    https://newtpad.github.io/
 // @version      1.0.0
@@ -283,15 +327,39 @@
   document.addEventListener('DOMContentLoaded', announce);
 })();`;
 
-    // Bind real Data-URI matching Violentmonkey's regex: /\.user\.js([?#].*)?$/
     const badge = document.getElementById('companion-badge');
-    badge.href = 'data:text/javascript;charset=utf-8,' + 
-                 encodeURIComponent(COMPANION_SOURCE) + 
-                 '#newtpad.user.js';
+    const modal = document.getElementById('help-modal');
 
-    /* =====================================================================
-       2. NEWTPAD DASHBOARD CORE LOGIC
-       ===================================================================== */
+    // Environment Detection: Live HTTPS vs Local File
+    function handleInstallClick(e) {
+      if (state.hasCompanion) return;
+
+      if (window.location.protocol === 'file:') {
+        // Local file:/// detected. Show guide modal.
+        modal.style.display = 'flex';
+      } else {
+        // Hosted on https://. Standard 1-click install.
+        window.location.href = 'newtpad.user.js';
+      }
+    }
+
+    function closeModal() {
+      modal.style.display = 'none';
+    }
+
+    function copyScript() {
+      navigator.clipboard.writeText(COMPANION_CODE).then(() => {
+        const btn = document.getElementById('copy-btn');
+        btn.textContent = '✓ Copied! Now click VM Icon -> + -> Paste';
+        btn.style.background = 'var(--success)';
+        setTimeout(() => {
+          btn.textContent = '📋 Copy Script to Clipboard';
+          btn.style.background = 'var(--accent)';
+        }, 4000);
+      });
+    }
+
+    // State & Dashboard Logic
     const state = {
       notes: '',
       links: [
@@ -299,11 +367,9 @@
         { title: 'Hacker News', url: 'https://news.ycombinator.com', clicks: 3, lastUsed: Date.now() },
         { title: 'MDN Web', url: 'https://developer.mozilla.org', clicks: 0, lastUsed: Date.now() - (12 * 86400000) }
       ],
-      hideNews: false,
       hasCompanion: false
     };
 
-    // Clock
     function updateClock() {
       const d = new Date();
       document.getElementById('clock').textContent = 
@@ -312,9 +378,8 @@
     setInterval(updateClock, 1000);
     updateClock();
 
-    // Data Sync
     function saveData() {
-      const payload = { notes: state.notes, links: state.links, hideNews: state.hideNews };
+      const payload = { notes: state.notes, links: state.links };
       if (state.hasCompanion) {
         window.postMessage({ type: 'NEWTPAD_SAVE_DATA', payload }, '*');
       } else {
@@ -325,7 +390,6 @@
       setTimeout(() => { ind.textContent = 'Synced'; }, 800);
     }
 
-    // Adaptive Links & Decay
     function renderLinks() {
       const list = document.getElementById('links-container');
       list.innerHTML = '';
@@ -341,7 +405,7 @@
           <a class="link-item" href="${item.url}" data-idx="${index}">
             <span>${item.title}</span>
             <div class="link-stats">
-              ${isStale ? `<span class="prune-btn" data-remove="${index}">Unused: Prune?</span>` : ''}
+              ${isStale ? `<span class="prune-btn" data-remove="${index}">Prune</span>` : ''}
               <span>${item.clicks} hits</span>
             </div>
           </a>
@@ -379,29 +443,20 @@
       e.target.reset();
     });
 
-    // Notes
     const scratchpad = document.getElementById('scratchpad');
     scratchpad.addEventListener('input', (e) => {
       state.notes = e.target.value;
       saveData();
     });
 
-    // News & Toggle
-    function toggleNewsPanel() {
-      state.hideNews = !state.hideNews;
-      document.getElementById('news-panel').style.display = state.hideNews ? 'none' : 'flex';
-      saveData();
-    }
-
     function fetchNews() {
-      if (state.hideNews) return;
       fetch('https://api.hnpwa.com/v0/news/1.json')
         .then(res => res.json())
         .then(items => {
           document.getElementById('news-container').innerHTML = items.slice(0, 6).map(post => `
             <li class="news-item">
               <a href="${post.url}" target="_blank" rel="noopener">${post.title}</a>
-              <div class="news-meta">${post.points || 0} pts · ${post.comments_count} comments</div>
+              <div class="news-meta">${post.points || 0} pts · ${post.comments_count} cmts</div>
             </li>
           `).join('');
         })
@@ -411,43 +466,37 @@
         });
     }
 
-    // Handshake with Violentmonkey
+    // Companion Connection Handshake
     window.addEventListener('message', (e) => {
       if (e.source !== window || !e.data) return;
 
       if (e.data.type === 'NEWTPAD_VM_READY') {
         state.hasCompanion = true;
         badge.className = 'status-badge connected';
-        badge.removeAttribute('href');
         document.getElementById('badge-label').textContent = 'Companion Active';
+        closeModal();
         window.postMessage({ type: 'NEWTPAD_LOAD_DATA' }, '*');
       }
 
       if (e.data.type === 'NEWTPAD_DATA_LOADED' && e.data.payload) {
         state.notes = e.data.payload.notes || '';
         state.links = e.data.payload.links || state.links;
-        state.hideNews = !!e.data.payload.hideNews;
-        applyState();
+        scratchpad.value = state.notes;
+        renderLinks();
       }
     });
 
-    function applyState() {
-      scratchpad.value = state.notes;
-      document.getElementById('news-panel').style.display = state.hideNews ? 'none' : 'flex';
-      renderLinks();
-    }
-
-    // Native LocalStorage Fallback Init
+    // Native LocalStorage fallback on load
     const local = localStorage.getItem('newtpad_data');
     if (local) {
       try {
         const parsed = JSON.parse(local);
         state.notes = parsed.notes || '';
         state.links = parsed.links || state.links;
-        state.hideNews = !!parsed.hideNews;
       } catch (_) {}
     }
-    applyState();
+    scratchpad.value = state.notes;
+    renderLinks();
     fetchNews();
     window.postMessage({ type: 'NEWTPAD_PING' }, '*');
   </script>
