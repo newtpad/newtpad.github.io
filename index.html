@@ -20,6 +20,7 @@
       --cyan: #0ea5e9;
       --green: #10b981;
       --red: #ef4444;
+      --purple: #a855f7;
       --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Consolas, monospace;
     }
@@ -124,14 +125,68 @@
     }
     .link-row:hover { background: var(--surface-raised); }
 
-    .unhydrated {
-      padding: 1.5rem;
-      color: var(--text-dim);
+    /* Onboarding & Setup Architecture Cards */
+    .onboarding-container {
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
       font-family: var(--font-mono);
-      font-size: 0.8rem;
-      line-height: 1.6;
+      font-size: 0.78rem;
+      line-height: 1.55;
+      color: var(--text-muted);
     }
-    .unhydrated a { color: var(--cyan); text-decoration: none; border-bottom: 1px dashed var(--cyan); }
+
+    .callout-box {
+      background: var(--surface-raised);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--purple);
+      padding: 0.75rem;
+      border-radius: 4px;
+      color: var(--text);
+    }
+    .callout-title {
+      font-weight: 700;
+      color: #c084fc;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      margin-bottom: 0.35rem;
+      text-transform: uppercase;
+      font-size: 0.72rem;
+    }
+
+    .extension-badges {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .ext-btn {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.6rem 0.75rem;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      text-decoration: none;
+      color: var(--text);
+      transition: all 0.15s ease;
+    }
+    .ext-btn:hover {
+      background: var(--surface-raised);
+      border-color: var(--cyan);
+      color: #fff;
+    }
+    .ext-btn strong { font-size: 0.8rem; }
+    .ext-tag {
+      font-size: 0.65rem;
+      color: var(--text-dim);
+      padding: 2px 6px;
+      background: rgba(0,0,0,0.3);
+      border-radius: 2px;
+    }
+    .ext-btn:hover .ext-tag { color: var(--cyan); }
 
     footer {
       border-top: 1px solid var(--border);
@@ -186,23 +241,41 @@
       <div class="slot-body" id="slot-links"></div>
     </section>
 
-    <!-- Slot 3: Live Pulse / Open Tabs Feed -->
+    <!-- Slot 3: Pulse / Onboarding Hub -->
     <section class="slot-panel">
       <div class="slot-header">
-        <span>03 // PULSE FEED</span>
-        <span id="feed-meta">STANDBY</span>
+        <span>03 // PULSE FEED & ENGINE</span>
+        <span id="feed-meta">SETUP REQUIRED</span>
       </div>
       <div class="slot-body" id="slot-feed">
-        <div class="unhydrated">
-          Operating in standalone mode.<br /><br />
-          Install <a href="newtpad.user.js">newtpad.user.js</a> in Violentmonkey to link cross-tab presence and formula math.
+        <div class="onboarding-container">
+          
+          <!-- The One-Page AI Limitation Callout -->
+          <div class="callout-box">
+            <div class="callout-title">⚡ The One-Page AI Architecture</div>
+            <span>
+              Pure single-page apps cannot run inline AI without paid servers or exposing private API keys. 
+              Newtpad bridges this via <strong>Tweeks</strong> (zero-setup built-in <code>TW_inference</code>) or dispatches queries directly to <strong>Gemini</strong> in a new tab.
+            </span>
+          </div>
+
+          <p>Choose an engine to unlock live cross-tab monitoring, formulas, and intelligence:</p>
+
+          <!-- Dynamic Browser-Specific Extensions -->
+          <div class="extension-badges" id="ext-download-container">
+            <!-- Dynamically populated based on browser -->
+          </div>
+
+          <p style="font-size:0.7rem; color:var(--text-dim);">
+            Once installed, load <a href="newtpad.user.js" style="color:var(--cyan); text-decoration:none; border-bottom:1px dashed var(--cyan);">newtpad.user.js</a> to activate the companion.
+          </p>
         </div>
       </div>
     </section>
   </main>
 
   <footer id="slot-dock">
-    <div id="dock-left">SYSTEM OK</div>
+    <div id="dock-left">SYSTEM STANDBY</div>
     <div class="footer-actions">
       <button class="footer-btn" id="btn-export">[EXPORT DB]</button>
       <input type="file" id="file-import" style="display: none;" />
@@ -241,7 +314,6 @@
         }
       };
 
-      // Load or Initialize Database
       window.__np_get_db = () => {
         try {
           const raw = localStorage.getItem(DB_KEY);
@@ -292,7 +364,48 @@
       }
       renderHostLinks();
 
-      // Hotkeys
+      // Detect Browser for Download Links
+      function renderExtensionBadges() {
+        const container = document.getElementById('ext-download-container');
+        if (!container) return;
+
+        const ua = navigator.userAgent;
+        let isFirefox = ua.includes("Firefox");
+        let isEdge = ua.includes("Edg");
+        let browserName = isFirefox ? "Firefox" : isEdge ? "Edge" : "Chrome";
+
+        // Extension target links
+        const violentmonkeyUrl = isFirefox 
+          ? "https://addons.mozilla.org/en-US/firefox/addon/violentmonkey/"
+          : isEdge
+          ? "https://microsoftedge.microsoft.com/addons/detail/violentmonkey/eeagobfjdenkkddmbclomhiblgggliao"
+          : "https://chromewebstore.google.com/detail/violentmonkey/jinjaccalgkegednnccohejagnlnfdag";
+
+        const tweeksUrl = isFirefox
+          ? "https://addons.mozilla.org/en-US/firefox/addon/tweeks/"
+          : "https://chromewebstore.google.com/detail/tweeks/jldknlhlldmhhdkkdbfmlakcfojfgkba";
+
+        container.innerHTML = `
+          <a class="ext-btn" href="${tweeksUrl}" target="_blank" rel="noopener noreferrer">
+            <div>
+              <strong>Install Tweeks</strong> (${browserName})
+              <div style="font-size:0.68rem; color:var(--text-dim)">Built-in inline AI (TW_inference) + Gemini Relay</div>
+            </div>
+            <span class="ext-tag" style="border: 1px solid rgba(192, 132, 252, 0.4); color: #c084fc;">RECOMMENDED FOR AI</span>
+          </a>
+
+          <a class="ext-btn" href="${violentmonkeyUrl}" target="_blank" rel="noopener noreferrer">
+            <div>
+              <strong>Install Violentmonkey</strong> (${browserName})
+              <div style="font-size:0.68rem; color:var(--text-dim)">Full open-source userscript engine + cross-tab network</div>
+            </div>
+            <span class="ext-tag">OPEN SOURCE</span>
+          </a>
+        `;
+      }
+      renderExtensionBadges();
+
+      // Omnibar Navigation
       let lastFocus = null;
       const cmd = document.getElementById('cmd-input');
       window.addEventListener('keydown', (e) => {
