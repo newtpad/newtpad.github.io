@@ -4,29 +4,22 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Newtpad</title>
-
-  <!-- 1. Universal Hardware Reset & Anti-Flash Substrate -->
-  <style id="newtpad-base-style">
+  <style id="newtpad-core">
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    
     :root {
       --bg: #090a0d;
       --text-dim: #404552;
       --cyan: #0ea5e9;
-      --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Consolas, monospace;
+      --font-mono: ui-monospace, "SF Mono", Consolas, monospace;
     }
-
     html, body {
       width: 100%;
       height: 100%;
       background-color: var(--bg);
       color: #d8dee9;
-      overflow: hidden; /* Engine handles its own scroll containers */
+      overflow: hidden;
       -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
     }
-
-    /* Primary Dynamic Mounting Canvas */
     #root {
       width: 100%;
       height: 100%;
@@ -34,115 +27,51 @@
       flex-direction: column;
       position: relative;
     }
-
-    /* Unhydrated Standby State (Destroyed immediately on engine mount) */
     .np-unhydrated {
       margin: auto;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
       gap: 1rem;
       font-family: var(--font-mono);
       font-size: 0.8rem;
       color: var(--text-dim);
-      text-align: center;
-      padding: 2rem;
       user-select: none;
     }
-    .np-unhydrated a {
-      color: var(--cyan);
-      text-decoration: none;
-      border-bottom: 1px dashed var(--cyan);
-    }
-    .np-pulse-dot {
-      width: 6px;
-      height: 6px;
-      background: var(--text-dim);
-      border-radius: 50%;
-      animation: np-pulse 2s infinite ease-in-out;
-    }
-    @keyframes np-pulse {
-      0%, 100% { opacity: 0.2; transform: scale(0.8); }
-      50% { opacity: 1; transform: scale(1.2); }
-    }
+    .np-unhydrated a { color: var(--cyan); text-decoration: none; border-bottom: 1px dashed var(--cyan); }
   </style>
-
-  <!-- 2. Dynamic Injection Targets for Engine Style & Overrides -->
+  <!-- Userscript injects all layout and theme rules here -->
   <style id="newtpad-theme"></style>
-  <style id="newtpad-layout"></style>
 </head>
 <body>
-
-  <!-- Root Canvas: The Userscript owns everything inside this container -->
   <div id="root">
     <div class="np-unhydrated" id="np-standby">
-      <div class="np-pulse-dot"></div>
       <div>NEWTPAD // CORE STANDBY</div>
       <div>Install <a href="newtpad.user.js">newtpad.user.js</a> in Violentmonkey to boot system.</div>
     </div>
   </div>
 
   <script>
-    (() => {
-      'use strict';
-
-      // --- Universal Host Bus & Kernel Contract ---
-      window.NewtpadHost = {
-        version: '1.0.0',
-        isMounted: false,
-
-        // Engine attaches and claims the DOM
-        mount(engineAPI) {
-          this.isMounted = true;
-          const standby = document.getElementById('np-standby');
-          if (standby) standby.remove();
-          console.log('[Newtpad Host] Kernel mounted successfully.');
-        },
-
-        // Fast Dynamic CSS Injector
-        injectCSS(targetId, cssContent) {
-          let el = document.getElementById(targetId);
-          if (!el) {
-            el = document.createElement('style');
-            el.id = targetId;
-            document.head.appendChild(el);
-          }
-          el.textContent = cssContent;
-        },
-
-        // Universal Element Accessor
-        getRoot() {
-          return document.getElementById('root');
-        }
-      };
-
-      // --- Base Hardware Key Router ---
-      // Forwards hardware key combinations even before or after UI components mount
-      window.addEventListener('keydown', (e) => {
-        // Universal ESC dismiss: blurs whatever active element exists
-        if (e.key === 'Escape' && document.activeElement) {
-          document.activeElement.blur();
-        }
-
-        // Global '/' capture: Delegates focus to whatever input the engine designates as Omnibar
-        if (e.key === '/') {
-          const active = document.activeElement;
-          const isWriting = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable);
-          if (!isWriting) {
-            const omni = document.getElementById('cmd-input') || document.querySelector('[data-np-omni]');
-            if (omni) {
-              e.preventDefault();
-              omni.focus();
-              if (typeof omni.select === 'function') omni.select();
-            }
+    // Hardware Bus: Delegates key handling regardless of future UI redesigns
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && document.activeElement) {
+        document.activeElement.blur();
+      }
+      if (e.key === '/') {
+        const active = document.activeElement;
+        const isWriting = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable);
+        if (!isWriting) {
+          const omni = document.getElementById('cmd-input') || document.querySelector('[data-np-omni]');
+          if (omni) {
+            e.preventDefault();
+            omni.focus();
+            if (omni.select) omni.select();
           }
         }
-      });
+      }
+    });
 
-      // Announce Host Ready to Violentmonkey / Companion Script
-      window.postMessage({ type: 'NEWTPAD_HOST_READY' }, '*');
-    })();
+    window.postMessage({ type: 'NEWTPAD_HOST_READY' }, '*');
   </script>
 </body>
 </html>
