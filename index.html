@@ -4,7 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Newtpad</title>
-  <style>
+  
+  <!-- Base Structural Layout (Anti-flash & Core Structure) -->
+  <style id="newtpad-core">
     :root {
       --bg: #090a0d;
       --surface: #111318;
@@ -14,16 +16,14 @@
       --text: #d8dee9;
       --text-muted: #6b7280;
       --text-dim: #404552;
-      --amber: #d97706;
-      --amber-dim: #78350f;
-      --cyan: #0ea5e9;
+      --accent: #0ea5e9;
       --green: #10b981;
-      --red: #ef4444;
-      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Consolas, monospace;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
+    
     body {
       background: var(--bg);
       color: var(--text);
@@ -34,6 +34,7 @@
       padding: 1.25rem 2rem;
       gap: 1.25rem;
       -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
     }
 
     /* Top Bar */
@@ -47,10 +48,11 @@
       font-size: 0.75rem;
     }
     .header-left { display: flex; align-items: center; gap: 1rem; }
-    .header-title { font-weight: 700; letter-spacing: 0.05em; color: var(--text-muted); text-transform: uppercase; }
+    .header-title { font-weight: 700; letter-spacing: 0.05em; color: var(--text-muted); }
     .clock-display { font-feature-settings: "tnum" 1; color: var(--text); }
+    #companion-indicator { transition: color 0.2s ease; }
 
-    /* Command Strip */
+    /* Command Palette Bar */
     .cmd-bar {
       position: relative;
       display: flex;
@@ -78,7 +80,7 @@
       pointer-events: none;
     }
 
-    /* Primary Grid Layout */
+    /* App Workspace Grid */
     .app-grid {
       display: grid;
       grid-template-columns: 1.2fr 1fr 1fr;
@@ -114,7 +116,45 @@
     }
     .slot-body { flex: 1; display: flex; flex-direction: column; position: relative; }
 
-    /* Empty/Standby State Notice */
+    /* Scratchpad Native Component */
+    .scratchpad-area {
+      width: 100%;
+      height: 100%;
+      flex: 1;
+      background: transparent;
+      border: none;
+      padding: 1rem;
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      line-height: 1.6;
+      resize: none;
+      outline: none;
+    }
+
+    /* Fast Links Container */
+    .links-list {
+      display: flex;
+      flex-direction: column;
+      padding: 0.5rem;
+      gap: 0.25rem;
+    }
+    .link-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.5rem 0.75rem;
+      border-radius: 3px;
+      text-decoration: none;
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      transition: background 0.1s ease;
+    }
+    .link-item:hover { background: var(--surface-raised); }
+    .link-item span { color: var(--text-dim); font-size: 0.7rem; }
+
+    /* Feed/Standby Status */
     .unhydrated {
       padding: 1.5rem;
       color: var(--text-dim);
@@ -123,12 +163,12 @@
       line-height: 1.6;
     }
     .unhydrated a {
-      color: var(--cyan);
+      color: var(--accent);
       text-decoration: none;
-      border-bottom: 1px dashed var(--cyan);
+      border-bottom: 1px dashed var(--accent);
     }
 
-    /* Utility Dock (Bottom) */
+    /* Footer Dock */
     #slot-dock {
       border-top: 1px solid var(--border);
       padding-top: 0.75rem;
@@ -140,6 +180,9 @@
       color: var(--text-dim);
     }
   </style>
+
+  <!-- Theme Injection Target for Companion Engine -->
+  <style id="newtpad-theme"></style>
 </head>
 <body>
 
@@ -149,7 +192,7 @@
       <span class="clock-display" id="clock">00:00:00</span>
     </div>
     <div id="companion-indicator" style="color: var(--text-dim);">
-      Waiting for Companion...
+      [STANDALONE DB]
     </div>
   </header>
 
@@ -159,89 +202,214 @@
       type="text" 
       id="cmd-input" 
       class="cmd-input" 
-      placeholder="Type a URL, search, or calculation... (/ to focus)" 
+      placeholder="Type a command or URL... ([TAB] to toggle)" 
       autocomplete="off" 
       spellcheck="false" 
     />
   </div>
 
   <main class="app-grid">
-    <!-- Slot 1: Notes / Scratchpad -->
+    <!-- Slot 1: Instant Persistent Scratchpad -->
     <section class="slot-panel">
       <div class="slot-header">
         <span>01 // SCRATCHPAD</span>
-        <span id="scratchpad-meta">--</span>
+        <span id="scratchpad-meta">SAVED</span>
       </div>
-      <div class="slot-body" id="slot-scratchpad">
-        <div class="unhydrated">Connecting storage...</div>
+      <div class="slot-body">
+        <textarea 
+          id="scratchpad" 
+          class="scratchpad-area" 
+          placeholder="Jot ideas, code, scratch notes... (autosaved locally)"
+        ></textarea>
       </div>
     </section>
 
-    <!-- Slot 2: Adaptive Links -->
+    <!-- Slot 2: Fast Bookmarks -->
     <section class="slot-panel">
       <div class="slot-header">
         <span>02 // FREQUENT ACCESS</span>
-        <span id="links-meta">--</span>
+        <span id="links-meta">LOCAL</span>
       </div>
-      <div class="slot-body" id="slot-links">
-        <div class="unhydrated">
-          Companion script not active.<br /><br />
-          Install <a href="newtpad.user.js">newtpad.user.js</a> in Violentmonkey to unlock live persistence and utilities.
-        </div>
+      <div class="slot-body">
+        <nav class="links-list" id="links-container"></nav>
       </div>
     </section>
 
-    <!-- Slot 3: Live Pulse / Feeds -->
+    <!-- Slot 3: Live Pulse Feed (Companion Expanded) -->
     <section class="slot-panel">
       <div class="slot-header">
         <span>03 // PULSE FEED</span>
-        <span id="feed-meta">--</span>
+        <span id="feed-meta">AWAITING ENGINE</span>
       </div>
       <div class="slot-body" id="slot-feed">
-        <div class="unhydrated">Waiting for engine...</div>
+        <div class="unhydrated">
+          Operating in zero-install mode.<br /><br />
+          Install <a href="newtpad.user.js">newtpad.user.js</a> in Violentmonkey to link cross-origin live feeds and persistent API synchronization.
+        </div>
       </div>
     </section>
   </main>
 
   <footer id="slot-dock">
     <div id="dock-left">SYSTEM STANDBY</div>
-    <div id="dock-right">PRESS [?] FOR COMMANDS</div>
+    <div id="dock-right">[TAB] COMMAND BAR &nbsp;|&nbsp; [ESC] BLUR</div>
   </footer>
 
   <script>
-    // Universal Clock (host level)
-    function tick() {
-      const d = new Date();
-      document.getElementById('clock').textContent = 
-        d.toTimeString().split(' ')[0];
-    }
-    setInterval(tick, 1000);
-    tick();
+    (() => {
+      'use strict';
 
-    // Hotkey: press "/" to focus command bar from anywhere
-    window.addEventListener('keydown', (e) => {
-      if (e.key === '/' && document.activeElement.tagName !== 'TEXTAREA' && document.activeElement.tagName !== 'INPUT') {
-        e.preventDefault();
-        document.getElementById('cmd-input').focus();
-      }
-      if (e.key === 'Escape') {
-        document.getElementById('cmd-input').blur();
-      }
-    });
+      const STORAGE_KEY = 'newtpad_state';
 
-    // Evergreen Handshake Bus
-    window.Newtpad = {
-      isMounted: false,
-      mount(api) {
-        this.isMounted = true;
-        document.getElementById('companion-indicator').innerHTML = 
-          `<span style="color:var(--green)">●</span> COMPANION ACTIVE`;
-        console.log('[Newtpad] Companion mounted successfully.');
-      }
-    };
+      // Seed Database Defaults (First run)
+      const defaultState = {
+        version: 1.0,
+        scratchpad: "NEWTPAD INITIALIZED\n====================\n\n- Standalone persistence enabled.\n- Press [TAB] to jump to the omnibar.\n- Connect userscript anytime to inject custom extensions.",
+        theme: 'default',
+        masterKey: 'Tab',
+        links: [
+          { label: 'GitHub', url: 'https://github.com' },
+          { label: 'Hacker News', url: 'https://news.ycombinator.com' },
+          { label: 'Localhost:8080', url: 'http://localhost:8080' }
+        ]
+      };
 
-    // Broadcast host presence to Violentmonkey
-    window.postMessage({ type: 'NEWTPAD_HOST_READY' }, '*');
+      // --- Storage Controller ---
+      let db = (() => {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          return raw ? Object.assign({}, defaultState, JSON.parse(raw)) : defaultState;
+        } catch(e) {
+          return defaultState;
+        }
+      })();
+
+      function persistDB() {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
+        } catch (e) {
+          console.warn('[Newtpad] Storage quota exceeded or blocked', e);
+        }
+      }
+
+      // --- UI Elements ---
+      const pad = document.getElementById('scratchpad');
+      const padMeta = document.getElementById('scratchpad-meta');
+      const linksContainer = document.getElementById('links-container');
+      const cmdInput = document.getElementById('cmd-input');
+      const clock = document.getElementById('clock');
+      let lastFocusedElement = null;
+
+      // --- Scratchpad Autosave Engine ---
+      pad.value = db.scratchpad || '';
+      let saveTimer = null;
+
+      pad.addEventListener('input', () => {
+        padMeta.textContent = 'SYNCING...';
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(() => {
+          db.scratchpad = pad.value;
+          persistDB();
+          padMeta.textContent = 'SAVED';
+        }, 200);
+      });
+
+      // Airbag: Guarantee write to disk on tab close/switch
+      window.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden') {
+          db.scratchpad = pad.value;
+          persistDB();
+        }
+      });
+
+      // --- Render Initial Links ---
+      function renderLinks(links) {
+        linksContainer.innerHTML = links.map(link => `
+          <a class="link-item" href="${link.url}" target="_blank" rel="noopener noreferrer">
+            <span>&gt;</span>
+            <strong>${link.label}</strong>
+            <span>${link.url.replace(/^https?:\/\//, '')}</span>
+          </a>
+        `).join('');
+      }
+      renderLinks(db.links);
+
+      // --- Universal Live Clock ---
+      function tick() {
+        clock.textContent = new Date().toTimeString().split(' ')[0];
+      }
+      setInterval(tick, 1000);
+      tick();
+
+      // --- Universal Keyboard Master Engine (Tab Handler) ---
+      window.addEventListener('keydown', (e) => {
+        // Toggle Master Focus via [Tab]
+        if (e.key === 'Tab') {
+          e.preventDefault();
+          if (document.activeElement === cmdInput) {
+            if (lastFocusedElement && typeof lastFocusedElement.focus === 'function') {
+              lastFocusedElement.focus();
+            } else {
+              cmdInput.blur();
+            }
+          } else {
+            lastFocusedElement = document.activeElement;
+            cmdInput.focus();
+            cmdInput.select();
+          }
+        }
+
+        // Global Escape
+        if (e.key === 'Escape' && document.activeElement) {
+          document.activeElement.blur();
+        }
+      });
+
+      // Simple Command Bar Runner
+      cmdInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          const val = cmdInput.value.trim();
+          if (!val) return;
+
+          if (val.startsWith('http://') || val.startsWith('https://')) {
+            window.location.href = val;
+          } else if (val.includes('.') && !val.includes(' ')) {
+            window.location.href = 'https://' + val;
+          } else {
+            window.location.href = `https://duckduckgo.com/?q=${encodeURIComponent(val)}`;
+          }
+        }
+      });
+
+      // --- Companion Handshake Bus (Public API) ---
+      window.NewtpadHost = {
+        isMounted: false,
+
+        // Companion reads seed database on initial install
+        getDatabase() {
+          return Object.assign({}, db);
+        },
+
+        // Companion writes back directly to the page UI & database
+        setDatabase(updatedData) {
+          db = Object.assign(db, updatedData);
+          pad.value = db.scratchpad || '';
+          renderLinks(db.links || []);
+          persistDB();
+        },
+
+        // Companion registers and mounts
+        mount(companionAPI) {
+          this.isMounted = true;
+          document.getElementById('companion-indicator').innerHTML = 
+            `<span style="color:var(--green)">●</span> COMPANION ACTIVE`;
+          console.log('[Newtpad] Userscript engine attached successfully.');
+        }
+      };
+
+      // Broadcast readiness to Violentmonkey
+      window.postMessage({ type: 'NEWTPAD_HOST_READY' }, '*');
+    })();
   </script>
 </body>
 </html>
